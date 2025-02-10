@@ -71,10 +71,19 @@ export default {
       window.location.href = "/";
     },
     async fetchLogo() {
+      let baseURL = "";
+      
+      // When on the server, use the absolute URL for your hosted site.
+      if (process.server) {
+        baseURL = "https://alexislens.netlify.app";
+      } else {
+        // On the client, relative URLs work fine.
+        baseURL = window.location.origin;
+      }
+      
       try {
-        const response = await fetch("/.netlify/functions/getImages?folder=logo");
+        const response = await fetch(`${baseURL}/.netlify/functions/getImages?folder=logo`);
         const data = await response.json();
-
         if (data.images && data.images.length > 0) {
           this.logoUrl = data.images[0].url;
         } else {
@@ -159,7 +168,7 @@ export default {
 
 /* Center: Title on gallery pages */
 .header-center {
-  flex: 1;               /* Fill remaining space */
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;

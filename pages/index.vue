@@ -102,12 +102,11 @@ export default {
   async asyncData({ req }) {
     let baseURL = "";
     if (process.server) {
-      const protocol =
-        (req.headers["x-forwarded-proto"] &&
-          req.headers["x-forwarded-proto"].split(",")[0]) ||
-        "http";
-      baseURL = `${protocol}://${req.headers.host}`;
+      // When running on the server (during SSR or static generation), use the absolute URL.
+      // You could also use an environment variable here.
+      baseURL = "https://alexislens.netlify.app";
     } else {
+      // When running in the browser, use window.location.origin.
       baseURL = window.location.origin;
     }
     try {
@@ -134,6 +133,7 @@ export default {
     };
   },
   mounted() {
+    // These fetch calls run only on the client so relative URLs work fine.
     fetch("/.netlify/functions/getImages?folder=main")
       .then((res) => res.json())
       .then((data) => {
@@ -224,7 +224,7 @@ export default {
 
 /* Galleries Section */
 .galleries {
-  /* Slides stack vertically */
+  
 }
 
 .gallery-slide {
