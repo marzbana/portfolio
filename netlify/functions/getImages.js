@@ -28,6 +28,8 @@ exports.handler = async (event, context) => {
       url: img.secure_url,
       public_id: img.public_id,
       format: img.format,
+      width: img.width,
+      height: img.height
     }));
 
     return {

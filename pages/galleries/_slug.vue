@@ -1,63 +1,173 @@
 <template>
-  <div data-scroll-section>
-    <section class="container mx-auto p-4">
-      <!-- Back Button -->
-      <div class="mb-4">
-        <nuxt-link to="/" class="text-purple-600 hover:underline">
-          ← Back to Home
-        </nuxt-link>
-      </div>
-
-      <div class="text-center mb-8">
-        <h2 class="text-4xl font-bold">{{ gallery.title }}</h2>
-        <p class="text-lg text-gray-600 mt-2">{{ gallery.description }}</p>
-      </div>
+  <client-only>
+    <div data-scroll-section class="gallery-page">
+      <!-- Removed the old .gallery-header section 
+           because we don’t want a second banner. -->
 
       <!-- Gallery Images Section -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div
-          v-for="(img, index) in images"
-          :key="index"
-          class="overflow-hidden"
-        >
-          <img
-            :src="img.url"
-            :alt="img.public_id"
-            class="w-full h-64 object-cover hover:scale-105 transform transition duration-300"
-          />
+      <section class="gallery-images container mx-auto pt-20 pb-12">
+        <!-- Scroll container for Locomotive Scroll -->
+        <div class="gallery-slider" data-scroll-container>
+          <!-- Loop over the imageGroups -->
+          <div
+            v-for="(group, groupIndex) in imageGroups"
+            :key="groupIndex"
+            data-scroll
+          >
+            <!-- Vertical Image Pair -->
+            <div
+              v-if="group.type === 'vertical-pair'"
+              class="flex gap-4 mb-8"
+            >
+              <div
+                v-for="(img, imgIndex) in group.images"
+                :key="img.public_id"
+                class="gallery-slide relative flex items-center justify-center clickable-slide w-1/2"
+              >
+                <img
+                  :src="img.url"
+                  :alt="img.public_id"
+                  class="slide-image"
+                />
+              </div>
+            </div>
+
+            <!-- Single Image -->
+            <div
+              v-else
+              class="gallery-slide relative flex items-center justify-center mb-8 clickable-slide"
+            >
+              <img
+                :src="group.image.url"
+                :alt="group.image.public_id"
+                class="slide-image"
+              />
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
-  </div>
+      </section>
+    </div>
+  </client-only>
 </template>
 
 <script>
 export default {
-  async asyncData({ $content, params, error }) {
-    // Fetch the galleries metadata from the Markdown file
-    const contentData = await $content('galleries', 'index').fetch();
-    // Find the gallery entry with the matching slug
-    const gallery = (contentData.galleries || []).find(
-      (g) => g.slug === params.slug
-    );
-    if (!gallery) {
-      return error({ statusCode: 404, message: 'Gallery not found' });
-    }
+  async asyncData({ params, error }) {
+    const folder = `gallery_${params.slug}`;
     try {
-      // Use the gallery's folder to fetch images dynamically
-      const res = await fetch(`/.netlify/functions/getImages?folder=${gallery.folder}`);
+      const res = await fetch(`/.netlify/functions/getImages?folder=${folder}`);
       const data = await res.json();
       return {
-        gallery,
+        gallery: {
+          title: params.slug.charAt(0).toUpperCase() + params.slug.slice(1),
+          description: ""
+        },
         images: data.images || []
       };
     } catch (err) {
-      return error({ statusCode: 500, message: 'Error fetching gallery images' });
+      return error({ statusCode: 500, message: "Error fetching gallery images" });
+    }
+  },
+  computed: {
+    imageGroups() {
+      const groups = [];
+      let i = 0;
+
+      while (i < this.images.length) {
+        const current = this.images[i];
+        const isVertical = current.height > current.width;
+
+        if (isVertical) {
+          const next = this.images[i + 1];
+          if (next && next.height > next.width) {
+            groups.push({
+              type: 'vertical-pair',
+              images: [current, next]
+            });
+            i += 2;
+          } else {
+            groups.push({
+              type: 'single',
+              image: current
+            });
+            i++;
+          }
+        } else {
+          groups.push({
+            type: 'single',
+            image: current
+          });
+          i++;
+        }
+      }
+      return groups;
+    }
+  },
+  mounted() {
+    // Only run LocomotiveScroll in the browser
+    if (process.client) {
+      this.$nextTick(() => {
+        import('locomotive-scroll').then((module) => {
+          const LocomotiveScroll = module.default;
+          this.scroll = new LocomotiveScroll({
+            el: document.querySelector('[data-scroll-container]'),
+            smooth: true,
+            multiplier: 1, // Adjust if you want faster/slower scrolling
+            smartphone: { smooth: true },
+            tablet: { smooth: true },
+          });
+        });
+      });
+    }
+  },
+  beforeDestroy() {
+    if (this.scroll) {
+      this.scroll.destroy();
     }
   }
-}
+};
 </script>
 
 <style scoped>
-/* Additional styles if needed */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Source+Sans+Pro:wght@400;600&display=swap');
+
+.gallery-page {
+  background-color: #111;
+  color: #fff;
+  min-height: 100vh;
+}
+
+/* We removed the .gallery-header styling 
+   because we display the title in the layout now */
+
+.slide-image {
+  max-width: 100%;
+  max-height: 100vh;
+  object-fit: contain;
+  transition: transform 0.5s ease-out;
+  transform-origin: center center;
+}
+
+.slide-image:hover {
+  transform: scale(1.05);
+}
+
+[data-scroll-container] {
+  min-height: 100vh;
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+  .gallery-images {
+    padding-top: 6rem; /* some top padding so images aren’t hidden by the fixed header */
+  }
+
+  .gallery-slider .flex.gap-4 {
+    flex-direction: column;
+  }
+
+  .gallery-slider .flex.gap-4 .gallery-slide {
+    width: 100% !important;
+  }
+}
 </style>
