@@ -110,7 +110,6 @@ export default {
       baseURL = window.location.origin;
     }
     try {
-      console.log("Getting galleries");
       const res = await fetch(`${baseURL}/.netlify/functions/getGalleries`);
       const data = await res.json();
       const galleries = data.galleries.map((gallery) => ({
@@ -121,7 +120,6 @@ export default {
         folder: gallery.folder,
         coverImage: gallery.coverImage,
       }));
-      console.log(galleries);
       return { galleries };
     } catch (error) {
       console.error("Error loading galleries:", error);
